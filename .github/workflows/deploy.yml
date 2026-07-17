@@ -1,17 +1,29 @@
-name: Deploy ke cPanel Biznet
+name: Build dan Deploy ke cPanel Biznet
 
 on:
   push:
     branches:
-      - main  # Memastikan automasi berjalan setiap Anda push ke branch main
+      - main
 
 jobs:
-  web-deploy:
-    name: 🚀 Deploy File Terbaru
+  build-and-deploy:
+    name: 🏗️ Build Proyek & 🚀 Deploy
     runs-on: ubuntu-latest
     steps:
     - name: 🚚 Ambil Kode Terbaru dari GitHub
       uses: actions/checkout@v4
+
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: 📦 Install Dependencies
+      run: npm install
+
+    - name: 🛠️ Build Project (Kompilasi ke HTML/CSS/JS)
+      run: npm run build
 
     - name: 📂 Sinkronisasi File via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -19,3 +31,4 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./dist/  # Mengirim HANYA isi folder hasil kompilasi
