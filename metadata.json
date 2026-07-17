@@ -1,0 +1,10 @@
+{
+  "name": "tpqalmujahiddin",
+  "description": "Aplikasi TPQ modern untuk pencatatan dan monitoring mengaji jilid, tahfidz, dan ibadah praktis santri secara real-time.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

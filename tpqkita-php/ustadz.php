@@ -1,0 +1,410 @@
+<?php
+// ==========================================
+// TPQKITA - MANAGE USTADZ (ustadz.php)
+// CRUD operations for teachers/asatidzah
+// ==========================================
+
+require_once 'header.php';
+requireRoles(['Walikelas', 'KepalaTPQ']);
+
+$db = getDB();
+$alert = '';
+$alert_type = '';
+
+// --- ACTIONS HANDLER ---
+
+// 1. CREATE or UPDATE Ustadz
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_ustadz'])) {
+    $id = trim($_POST['id']);
+    $name = trim($_POST['name']);
+    $username = trim($_POST['username']);
+    $phone = trim($_POST['phone']);
+    $subjects_arr = isset($_POST['subjects']) ? $_POST['subjects'] : [];
+    $subjects = implode(',', $subjects_arr);
+    $password = $_POST['password'];
+    $is_edit = $_POST['is_edit'] === '1';
+
+    try {
+        if ($is_edit) {
+            // Update mode
+            if (!empty($password)) {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $db->prepare("
+                    UPDATE ustadz SET 
+                        name = ?, username = ?, phone = ?, subjects = ?, password_hash = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$name, $username, $phone, $subjects, $hash, $id]);
+            } else {
+                $stmt = $db->prepare("
+                    UPDATE ustadz SET 
+                        name = ?, username = ?, phone = ?, subjects = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$name, $username, $phone, $subjects, $id]);
+            }
+            
+            // Sync with users helper table
+            $stmtSync = $db->prepare("UPDATE users SET username = ?, name = ? WHERE linked_id = ? AND role = 'Ustadz'");
+            $stmtSync->execute([$username, $name, $id]);
+            if (!empty($password)) {
+                $stmtSyncH = $db->prepare("UPDATE users SET password_hash = ? WHERE linked_id = ? AND role = 'Ustadz'");
+                $stmtSyncH->execute([$hash, $id]);
+            }
+
+            $alert = "Data Ustadz <strong>" . htmlspecialchars($name) . "</strong> berhasil diperbarui!";
+            $alert_type = 'success';
+        } else {
+            // Insert mode
+            // Check unique constraints
+            $check = $db->prepare("SELECT id FROM ustadz WHERE id = ?");
+            $check->execute([$id]);
+            if ($check->fetch()) {
+                throw new Exception("ID Ustadz '$id' sudah digunakan!");
+            }
+
+            $checkU = $db->prepare("SELECT id FROM ustadz WHERE username = ?");
+            $checkU->execute([$username]);
+            if ($checkU->fetch()) {
+                throw new Exception("Username '$username' sudah digunakan!");
+            }
+
+            $hash = password_hash(!empty($password) ? $password : 'password', PASSWORD_DEFAULT);
+            $stmt = $db->prepare("
+                INSERT INTO ustadz (id, name, username, phone, subjects, password_hash)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([$id, $name, $username, $phone, $subjects, $hash]);
+
+            // Insert into general users
+            $stmtUser = $db->prepare("INSERT INTO users (id, username, password_hash, name, role, linked_id) VALUES (?, ?, ?, ?, 'Ustadz', ?)");
+            $stmtUser->execute(['U_USTADZ_' . $id, $username, $hash, $name, $id]);
+
+            $alert = "Ustadz baru <strong>" . htmlspecialchars($name) . "</strong> berhasil ditambahkan!";
+            $alert_type = 'success';
+        }
+    } catch (Exception $e) {
+        $alert = "Gagal menyimpan data: " . $e->getMessage();
+        $alert_type = 'error';
+    }
+}
+
+// 2. DELETE Ustadz
+if (isset($_GET['delete'])) {
+    $del_id = $_GET['delete'];
+    try {
+        $stmtN = $db->prepare("SELECT name FROM ustadz WHERE id = ?");
+        $stmtN->execute([$del_id]);
+        $uName = $stmtN->fetchColumn();
+
+        if ($uName) {
+            $stmtDel = $db->prepare("DELETE FROM ustadz WHERE id = ?");
+            $stmtDel->execute([$del_id]);
+
+            $stmtDelU = $db->prepare("DELETE FROM users WHERE linked_id = ? AND role = 'Ustadz'");
+            $stmtDelU->execute([$del_id]);
+
+            $alert = "Data Ustadz <strong>" . htmlspecialchars($uName) . "</strong> berhasil dihapus.";
+            $alert_type = 'success';
+        }
+    } catch (Exception $e) {
+        $alert = "Gagal menghapus data: " . $e->getMessage();
+        $alert_type = 'error';
+    }
+}
+
+// --- DATA FETCHING ---
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$queryStr = "SELECT * FROM ustadz WHERE 1=1";
+$params = [];
+
+if (!empty($search)) {
+    $queryStr .= " AND (name LIKE ? OR username LIKE ? OR phone LIKE ?)";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+    $params[] = "%$search%";
+}
+
+$queryStr .= " ORDER BY name ASC";
+$stmt = $db->prepare($queryStr);
+$stmt->execute($params);
+$ustadz_list = $stmt->fetchAll();
+?>
+
+<div class="space-y-8 animate-fade-in">
+    <!-- Header title -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Data Master Ustadz</h1>
+            <p class="text-sm text-slate-500">Kelola informasi guru pengajar (asatidzah), nomor kontak, serta materi pengajaran mereka.</p>
+        </div>
+        
+        <button onclick="openAddModal()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl transition duration-150 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Tambah Ustadz Baru
+        </button>
+    </div>
+
+    <!-- Alert status -->
+    <?php if (!empty($alert)): ?>
+        <div class="rounded-2xl border p-4 flex items-start gap-3 <?php echo $alert_type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'; ?>">
+            <div class="shrink-0">
+                <?php if ($alert_type === 'success'): ?>
+                    <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                <?php else: ?>
+                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                <?php endif; ?>
+            </div>
+            <p class="text-sm"><?php echo $alert; ?></p>
+        </div>
+    <?php endif; ?>
+
+    <!-- Search bar -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
+        <form action="ustadz.php" method="GET" class="flex flex-col sm:flex-row gap-3">
+            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Cari nama atau username ustadz..." 
+                   class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+            <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition duration-150 shadow-sm">
+                Cari Guru
+            </button>
+            <?php if (!empty($search)): ?>
+                <a href="ustadz.php" class="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-500 font-bold py-2.5 px-4 rounded-xl text-sm transition duration-150 flex items-center justify-center">
+                    Reset
+                </a>
+            <?php endif; ?>
+        </form>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-slate-600 border-collapse">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <th class="py-4 px-6">ID / Username</th>
+                        <th class="py-4 px-6">Nama Lengkap Ustadz</th>
+                        <th class="py-4 px-6">No. Telepon / HP</th>
+                        <th class="py-4 px-6">Materi Pengajaran</th>
+                        <th class="py-4 px-6 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                    <?php if (empty($ustadz_list)): ?>
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-slate-400">Tidak ada data guru ditemukan.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($ustadz_list as $u): ?>
+                            <tr class="hover:bg-slate-50/50 transition-colors duration-150 text-slate-700">
+                                <td class="py-4.5 px-6 font-mono text-xs">
+                                    <span class="block text-slate-800 font-bold"><?php echo htmlspecialchars($u['id']); ?></span>
+                                    <span class="block text-[10px] text-slate-400 font-semibold">@<?php echo htmlspecialchars($u['username']); ?></span>
+                                </td>
+                                <td class="py-4.5 px-6 font-bold text-slate-800">
+                                    <?php echo htmlspecialchars($u['name']); ?>
+                                </td>
+                                <td class="py-4.5 px-6 font-mono">
+                                    <?php echo htmlspecialchars($u['phone'] ?? '-'); ?>
+                                </td>
+                                <td class="py-4.5 px-6">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <?php 
+                                        $sub_tags = explode(',', $u['subjects']);
+                                        foreach ($sub_tags as $t): 
+                                            if (empty(trim($t))) continue;
+                                        ?>
+                                            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full text-indigo-700 bg-indigo-50 border border-indigo-100"><?php echo htmlspecialchars(trim($t)); ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </td>
+                                <td class="py-4.5 px-6 text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <button onclick='openEditModal(<?php echo json_encode($u); ?>)' 
+                                                class="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 rounded-lg transition-colors duration-150" 
+                                                title="Edit Profil">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                                            </svg>
+                                        </button>
+                                        <a href="ustadz.php?delete=<?php echo $u['id']; ?>" 
+                                           onclick="return confirm('Apakah Anda yakin ingin menghapus ustadz ini? Semua relasi wali kelas akan di-set kosong.')" 
+                                           class="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 hover:text-red-700 rounded-lg transition-colors duration-150" 
+                                           title="Hapus Ustadz">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dialog -->
+<div id="ustadz-modal" class="hidden fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <h3 id="modal-title" class="text-base font-extrabold text-slate-800">Tambah Ustadz Baru</h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form action="ustadz.php" method="POST" class="p-6 space-y-5">
+            <input type="hidden" name="is_edit" id="form-is-edit" value="0">
+            <input type="hidden" name="save_ustadz" value="1">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">ID Ustadz * (Misal: U03)</label>
+                <input type="text" name="id" id="form-id" required placeholder="U03" 
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Nama Lengkap Ustadz *</label>
+                <input type="text" name="name" id="form-name" required placeholder="Ustadz / Ustadzah..." 
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2">Username Login *</label>
+                    <input type="text" name="username" id="form-username" required placeholder="ahmad" 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2">No. HP / WhatsApp</label>
+                    <input type="text" name="phone" id="form-phone" placeholder="08xxxxxxxxxx" 
+                           class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Kata Sandi Login</label>
+                <input type="password" name="password" id="form-password" placeholder="Kosongkan jika tidak ingin diubah" 
+                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700">
+                <span id="password-help" class="text-[10px] text-slate-400 font-semibold block mt-1">Default sandi jika kosong saat buat baru: "password"</span>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Materi / Subjek Pengajaran (Centang semua yang diajarkan)</label>
+                <div class="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200/60 text-xs font-bold text-slate-700">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="subjects[]" value="Jilid" id="chk-jilid" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        Jilid / Iqra'
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="subjects[]" value="Tahfidz" id="chk-tahfidz" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        Tahfidz Qur'an
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="subjects[]" value="Ibadah Praktis" id="chk-ibadah" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                        Ibadah Praktis
+                    </label>
+                </div>
+            </div>
+
+            <!-- Submit footer -->
+            <div class="pt-4 border-t border-slate-100 flex justify-end gap-3 bg-white">
+                <button type="button" onclick="closeModal()" class="bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-2 px-4 rounded-xl text-xs transition duration-150">
+                    Batal
+                </button>
+                <button type="submit" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-5 rounded-xl text-xs transition duration-150">
+                    Simpan Ustadz
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('ustadz-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const formIsEdit = document.getElementById('form-is-edit');
+    
+    const formId = document.getElementById('form-id');
+    const formName = document.getElementById('form-name');
+    const formUsername = document.getElementById('form-username');
+    const formPhone = document.getElementById('form-phone');
+    const formPassword = document.getElementById('form-password');
+    const pwdHelp = document.getElementById('password-help');
+
+    const chkJilid = document.getElementById('chk-jilid');
+    const chkTahfidz = document.getElementById('chk-tahfidz');
+    const chkIbadah = document.getElementById('chk-ibadah');
+
+    function openAddModal() {
+        modalTitle.innerText = "Tambah Ustadz Baru";
+        formIsEdit.value = "0";
+        formId.disabled = false;
+        pwdHelp.innerText = 'Default sandi jika kosong saat buat baru: "password"';
+
+        formId.value = "";
+        formName.value = "";
+        formUsername.value = "";
+        formPhone.value = "";
+        formPassword.value = "";
+
+        chkJilid.checked = false;
+        chkTahfidz.checked = false;
+        chkIbadah.checked = false;
+
+        modal.classList.remove('hidden');
+    }
+
+    function openEditModal(ustadz) {
+        modalTitle.innerText = "Edit Profil Ustadz: " + ustadz.name;
+        formIsEdit.value = "1";
+        formId.disabled = true;
+        pwdHelp.innerText = "Biarkan kosong jika tidak ingin mengganti kata sandi";
+
+        formId.value = ustadz.id;
+        // Inject fallback form inputs for ID so it posts back
+        if (!document.getElementById('hidden-edit-id')) {
+            const hInput = document.createElement('input');
+            hInput.type = 'hidden';
+            hInput.name = 'id';
+            hInput.id = 'hidden-edit-id';
+            formIsEdit.parentNode.appendChild(hInput);
+        }
+        document.getElementById('hidden-edit-id').value = ustadz.id;
+
+        formName.value = ustadz.name;
+        formUsername.value = ustadz.username;
+        formPhone.value = ustadz.phone || "";
+        formPassword.value = "";
+
+        // Tick subjects
+        const subjects = ustadz.subjects.split(',');
+        chkJilid.checked = subjects.includes('Jilid');
+        chkTahfidz.checked = subjects.includes('Tahfidz');
+        chkIbadah.checked = subjects.includes('Ibadah Praktis');
+
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        if (document.getElementById('hidden-edit-id')) {
+            document.getElementById('hidden-edit-id').remove();
+        }
+    }
+</script>
+
+<?php
+require_once 'footer.php';
+?>
