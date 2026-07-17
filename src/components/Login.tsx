@@ -40,16 +40,38 @@ export default function Login({ onLoginSuccess, usersList, tpqIdentity }: LoginP
     e.preventDefault();
     setErrorMsg(null);
 
-    // Validate login
-    const cleanUser = username.trim().toLowerCase();
-    const foundUser = usersList.find(u => u.username.toLowerCase() === cleanUser);
-    const expectedPassword = foundUser?.password || 'password';
+    // Coba login via PHP API (cPanel MySQL) jika tersedia
+    fetch('/php/login.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    .then(async (res) => {
+      // Periksa apakah responsenya valid JSON (menghindari error HTML jika path salah)
+      const isJson = res.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await res.json() : null;
+      
+      if (res.ok && data && data.status === 'success') {
+        onLoginSuccess(data.user, rememberMe);
+      } else if (data && data.status === 'error') {
+        setErrorMsg(data.message || 'Username atau Password tidak cocok.');
+      } else {
+        throw new Error("Invalid API response");
+      }
+    })
+    .catch(err => {
+      console.warn("Gagal menghubungi PHP API, menggunakan mode offline (localStorage):", err);
+      // Fallback offline / localStorage (untuk preview di AI Studio)
+      const cleanUser = username.trim().toLowerCase();
+      const foundUser = usersList.find(u => u.username.toLowerCase() === cleanUser);
+      const expectedPassword = foundUser?.password || 'password';
 
-    if (foundUser && password === expectedPassword) {
-      onLoginSuccess(foundUser, rememberMe);
-    } else {
-      setErrorMsg(`Username atau Password tidak cocok. (Gunakan kata sandi: "${expectedPassword}")`);
-    }
+      if (foundUser && password === expectedPassword) {
+        onLoginSuccess(foundUser, rememberMe);
+      } else {
+        setErrorMsg(`Username atau Password tidak cocok. (Gunakan kata sandi: "${expectedPassword}")`);
+      }
+    });
   };
 
   // Quick action shortcut loggers (great for evaluators)

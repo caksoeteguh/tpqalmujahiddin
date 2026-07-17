@@ -7,9 +7,9 @@
 
 define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'db_tpqkita');
+define('DB_USER', 'tpqalmuj_user');
+define('DB_PASS', 'ilham@ERNA092420');
+define('DB_NAME', 'tpqalmuj_tpqkita');
 
 // Cross-Origin Resource Sharing (CORS) headers to allow React Frontend integration
 header("Access-Control-Allow-Origin: *");
