@@ -3,38 +3,50 @@ name: Build dan Deploy ke cPanel Biznet
 on:
   push:
     branches:
-      - main  # Memastikan fitur ini berjalan setiap kali Anda commit ke branch main
+      - main
 
 jobs:
   build-and-deploy:
+    name: 🏗️ Build Proyek & 🚀 Deploy
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Code
+    - name: 🚚 Ambil Kode Terbaru dari GitHub
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
+    - name: 🟢 Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: 20
         cache: 'npm'
 
-    - name: Install Dependencies
+    - name: 📦 Install Dependencies
       run: npm install
 
-    - name: Build React App
+    - name: 🛠️ Build Project (Kompilasi ke HTML/CSS/JS)
       run: npm run build
 
-    - name: Copy PHP Backend to Dist
+    # 👇 INI ADALAH KUNCI TAMBAHANNYA 👇
+    # Kita pindahkan folder PHP & routing ke dalam folder dist/ sebelum diupload
+    - name: 📂 Copy PHP Backend & Routing ke folder Dist
       run: |
         cp -r php dist/ || true
         cp -r tpqkita-php dist/ || true
-        cp .htaccess dist/ || true
-        cp index.php dist/ || true
+        
+        # Buat file index.php agar otomatis diarahkan ke versi PHP Native
+        echo '<?php header("Location: tpqkita-php/"); exit(); ?>' > dist/index.php
+        
+        # Ubah index.html dari React menjadi index_react.html agar tidak bentrok
+        mv dist/index.html dist/index_react.html || true
 
-    - name: Sync Files to cPanel via FTP
+    - name: 📂 Sinkronisasi File via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./dist/
+        # Kosongkan server-dir jika FTP akun sudah mengarah langsung ke folder domain
+        server-dir: ./
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
