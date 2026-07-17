@@ -3,7 +3,7 @@ name: Build dan Deploy ke cPanel Biznet
 on:
   push:
     branches:
-      - main
+      - main  # Memastikan fitur ini berjalan setiap kali Anda commit ke branch main
 
 jobs:
   build-and-deploy:
