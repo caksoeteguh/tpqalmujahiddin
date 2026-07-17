@@ -1,0 +1,21 @@
+name: Deploy ke cPanel Biznet
+
+on:
+  push:
+    branches:
+      - main  # Memastikan automasi berjalan setiap Anda push ke branch main
+
+jobs:
+  web-deploy:
+    name: 🚀 Deploy File Terbaru
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚚 Ambil Kode Terbaru dari GitHub
+      uses: actions/checkout@v4
+
+    - name: 📂 Sinkronisasi File via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
