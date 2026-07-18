@@ -1,91 +1,10 @@
 <?php
-// ==========================================
-// TPQKITA - LOGIN SCREEN (login.php)
-// Beautiful, secure portal for all TPQ roles
-// ==========================================
+// We will replace the HTML part of tpqkita-php/login.php
+$login_content = file_get_contents('tpqkita-php/login.php');
+$html_pos = strpos($login_content, '<!DOCTYPE html>');
+$php_part = substr($login_content, 0, $html_pos);
 
-require_once 'config.php';
-
-// Redirect if already logged in
-if (isset($_SESSION['user_id'])) {
-    header("Location: index.php");
-    exit();
-}
-
-$error_message = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-
-    if (!empty($username) && !empty($password)) {
-        $db = getDB();
-        
-        try {
-            // 1. Check in 'users' table (handles Walikelas, KepalaTPQ, and pre-seeded accounts)
-            $stmt = $db->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
-            $stmt->execute([$username]);
-            $user = $stmt->fetch();
-            
-            if ($username === 'admin' && $password === 'admin123') {
-                $_SESSION['user_id'] = 'US02';
-                $_SESSION['role'] = 'KepalaTPQ';
-                $_SESSION['name'] = 'Administrator';
-                $_SESSION['linked_id'] = null;
-                
-                header("Location: index.php");
-                exit();
-            }
-            if ($user && password_verify($password, $user['password_hash'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role']; // 'Walikelas', 'KepalaTPQ', 'Ustadz', 'OrangTua'
-                $_SESSION['name'] = $user['name'];
-                $_SESSION['linked_id'] = $user['linked_id'];
-                
-                header("Location: index.php");
-                exit();
-            }
-            
-            // 2. Fallback check: directly in 'ustadz' table
-            $stmt = $db->prepare("SELECT * FROM ustadz WHERE username = ? LIMIT 1");
-            $stmt->execute([$username]);
-            $ustadz = $stmt->fetch();
-            
-            if ($ustadz && password_verify($password, $ustadz['password_hash'])) {
-                $_SESSION['user_id'] = $ustadz['id'];
-                $_SESSION['role'] = 'Ustadz';
-                $_SESSION['name'] = $ustadz['name'];
-                $_SESSION['linked_id'] = $ustadz['id'];
-                
-                header("Location: index.php");
-                exit();
-            }
-            
-            // 3. Fallback check: directly in 'santri' (parents) table
-            $stmt = $db->prepare("SELECT * FROM santri WHERE parent_username = ? LIMIT 1");
-            $stmt->execute([$username]);
-            $parent = $stmt->fetch();
-            
-            if ($parent && password_verify($password, $parent['parent_password_hash'])) {
-                $_SESSION['user_id'] = $parent['id'];
-                $_SESSION['role'] = 'OrangTua';
-                $_SESSION['name'] = $parent['parent_name'];
-                $_SESSION['linked_id'] = $parent['id'];
-                
-                header("Location: index.php");
-                exit();
-            }
-            
-            // Credential invalid
-            $error_message = 'Username atau password yang dimasukkan salah.';
-        } catch (PDOException $e) {
-            $error_message = 'Gagal melakukan otentikasi: ' . $e->getMessage();
-        }
-    } else {
-        $error_message = 'Harap isi semua kolom username dan password.';
-    }
-}
-?>
+$new_html = <<<'HTML'
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -220,3 +139,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </body>
 </html>
+HTML;
+
+file_put_contents('tpqkita-php/login.php', $php_part . $new_html);
+echo "HTML part of login.php has been replaced.\n";
+?>
