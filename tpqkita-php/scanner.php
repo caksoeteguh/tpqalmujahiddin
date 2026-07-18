@@ -327,26 +327,29 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
 
     document.addEventListener('DOMContentLoaded', () => {
         setupCameraDevices();
+        
+        document.getElementById('btn-start').addEventListener('click', startScanning);
+        document.getElementById('btn-stop').addEventListener('click', () => stopScanning());
+        
+        // Auto-restart if camera changed
+        document.getElementById('camera-select').addEventListener('change', () => {
+            if (html5QrCode && html5QrCode.isScanning) {
+                stopScanning().then(() => startScanning());
+            }
+        });
     });
 
-    /**
-     * Synthesises a clear sound pitch beep on success
-     */
     function playBeepSound() {
         try {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-
             osc.type = 'sine';
-            osc.frequency.value = 1320; // High-pitch clear sound
+            osc.frequency.value = 1320;
             gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-            // Exponential decay envelope
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.16);
-
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-
             osc.start();
             osc.stop(audioCtx.currentTime + 0.16);
         } catch (err) {
@@ -354,37 +357,41 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
         }
     }
 
-    /**
-     * Lists all available cameras in select tag dropdown
-     */
     function setupCameraDevices() {
+        // If the browser doesn't support mediaDevices, warn user
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            document.getElementById('camera-select').innerHTML = '<option value="">Akses Kamera tidak didukung (Gunakan HTTPS)</option>';
+            return;
+        }
+
         Html5Qrcode.getCameras().then(devices => {
             const select = document.getElementById('camera-select');
             select.innerHTML = '';
             
             if (devices && devices.length > 0) {
                 cameraDevices = devices;
+                let backCamId = null;
                 devices.forEach((device, index) => {
                     const opt = document.createElement('option');
                     opt.value = device.id;
                     opt.text = device.label || 'Kamera ' + (index + 1);
+                    if (device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('belakang') || device.label.toLowerCase().includes('rear')) {
+                        backCamId = device.id;
+                    }
                     select.appendChild(opt);
                 });
-
-                document.getElementById('btn-start').addEventListener('click', startScanning);
-                document.getElementById('btn-stop').addEventListener('click', stopScanning);
+                if (backCamId) {
+                    select.value = backCamId;
+                }
             } else {
                 select.innerHTML = '<option value="">Tidak ada kamera ditemukan</option>';
             }
         }).catch(err => {
             console.error('Kamera permission error: ', err);
-            document.getElementById('camera-select').innerHTML = '<option value="">Izin kamera diblokir</option>';
+            document.getElementById('camera-select').innerHTML = '<option value="">Pilih kamera (Default)</option>';
         });
     }
 
-    /**
-     * Launches the scan loop
-     */
     function startScanning() {
         const select = document.getElementById('camera-select');
         let cameraId = select.value;
@@ -403,9 +410,12 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
             }
         };
 
+        // If no camera ID is found (e.g. permission not granted yet), fallback to environment camera
         let cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
 
-        html5QrCode = new Html5Qrcode("reader");
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
         
         document.getElementById('btn-start').disabled = true;
         document.getElementById('btn-stop').disabled = false;
@@ -418,74 +428,76 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
                 playBeepSound();
                 stopScanning();
                 
-                // Fetch student profile using barcode string
                 fetchStudentByBarcode(decodedText);
             },
             (errorMessage) => {
                 // silent scanning logic
             }
-        ).catch(err => {
+        ).then(() => {
+            // After successful start, if we didn't have cameras populated, try populating again
+            if (cameraDevices.length === 0) {
+                setupCameraDevices();
+            }
+        }).catch(err => {
             console.error('Camera Error: ', err);
-            alert('Gagal menyalakan kamera. Pastikan izin kamera diberikan.');
+            
+            // Check if it's an insecure context (HTTP instead of HTTPS)
+            if (window.isSecureContext === false) {
+                alert('Akses kamera diblokir. Harap akses aplikasi ini menggunakan HTTPS agar kamera dapat berfungsi.');
+            } else {
+                alert('Gagal menyalakan kamera. Pastikan browser memiliki izin mengakses kamera.');
+            }
+            
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-stop').disabled = true;
-            html5QrCode = null;
         });
     }
 
-    /**
-     * Halts camera feeds
-     */
     function stopScanning() {
         return new Promise((resolve) => {
             if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('btn-start').disabled = false;
-                    document.getElementById('btn-stop').disabled = true;
-                    html5QrCode.clear();
-                    html5QrCode = null;
+                try {
+                    html5QrCode.stop().then(() => {
+                        document.getElementById('btn-start').disabled = false;
+                        document.getElementById('btn-stop').disabled = true;
+                        html5QrCode.clear();
+                        html5QrCode = null;
+                        resolve();
+                    }).catch(err => {
+                        console.error('Error stopping camera: ', err);
+                        resolve();
+                    });
+                } catch(e) {
                     resolve();
-                }).catch(err => {
-                    console.error('Error stopping camera: ', err);
-                    resolve();
-                });
+                }
             } else {
                 resolve();
             }
         });
     }
 
-    /**
-     * Retrieves student profile via AJAX fetch (calling itself with GET api option)
-     */
     function fetchStudentByBarcode(barcodeStr) {
         if (!barcodeStr) return;
         
-        // Show loading state
         const placeholder = document.getElementById('result-placeholder');
         placeholder.innerHTML = '<h4>Mengambil data profil santri...</h4>';
         placeholder.classList.remove('hidden');
         document.getElementById('profile-pane').classList.add('hidden');
 
-        // Since it is an standalone file, we will do a simple AJAX request back to a PHP endpoint 
-        // Let's create a small helper logic or query.
-        // For standard local ease, we can fetch via fetch API with query params.
         fetch('scanner.php?ajax_fetch=1&barcode=' + encodeURIComponent(barcodeStr))
             .then(res => res.json())
             .then(data => {
                 if (data && data.success) {
-                    // Populate Profile View
                     document.getElementById('form-stu-id').value = data.santri.id;
                     document.getElementById('stu-name').innerText = data.santri.name;
                     document.getElementById('stu-barcode').innerText = data.santri.barcode;
                     document.getElementById('stu-class').innerText = data.santri.nama_kelas || 'Siswa Baru';
                     document.getElementById('stu-avatar').innerText = data.santri.name.substring(0,1);
+
                     document.getElementById('stu-last-jilid').innerText = data.santri.last_jilid || 'Belum ada data';
                     document.getElementById('stu-target').innerText = data.santri.target || 'Belum ada data';
                     document.getElementById('stu-history').innerHTML = data.santri.history || 'Belum ada histori';
 
-
-                    // Reveal profile view
                     placeholder.classList.add('hidden');
                     document.getElementById('profile-pane').classList.remove('hidden');
                 } else {
@@ -497,15 +509,11 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
             });
     }
 
-    /**
-     * Selects current active subform tab
-     */
     function selectEvalTab(tabName) {
         document.querySelectorAll('.eval-tab-btn').forEach(btn => {
             btn.classList.remove('border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
             btn.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
         });
-
         document.getElementById('tab-' + tabName).classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-700');
         document.getElementById('tab-' + tabName).classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
 
