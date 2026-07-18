@@ -387,8 +387,23 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
      */
     function startScanning() {
         const select = document.getElementById('camera-select');
-        const cameraId = select.value;
-        if (!cameraId) return;
+        let cameraId = select.value;
+        
+        // Setup configuration properly for mobile
+        const config = {
+            fps: 15,
+            qrbox: function(viewfinderWidth, viewfinderHeight) {
+                let minEdgePercentage = 0.7; // 70%
+                let minEdgeSize = Math.min(viewfinderWidth, viewfinderHeight);
+                let qrboxSize = Math.floor(minEdgeSize * minEdgePercentage);
+                return {
+                    width: qrboxSize,
+                    height: qrboxSize
+                };
+            }
+        };
+
+        let cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
 
         html5QrCode = new Html5Qrcode("reader");
         
@@ -396,11 +411,8 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
         document.getElementById('btn-stop').disabled = false;
 
         html5QrCode.start(
-            cameraId, 
-            {
-                fps: 15,
-                qrbox: { width: 250, height: 250 }
-            },
+            cameraConfig, 
+            config,
             (decodedText, decodedResult) => {
                 // SUCCESS SCAN CALLBACK
                 playBeepSound();
@@ -413,9 +425,11 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
                 // silent scanning logic
             }
         ).catch(err => {
-            alert('Gagal menyalakan kamera: ' + err);
+            console.error('Camera Error: ', err);
+            alert('Gagal menyalakan kamera. Pastikan izin kamera diberikan.');
             document.getElementById('btn-start').disabled = false;
             document.getElementById('btn-stop').disabled = true;
+            html5QrCode = null;
         });
     }
 
@@ -423,15 +437,22 @@ $santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC
      * Halts camera feeds
      */
     function stopScanning() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('btn-start').disabled = false;
-                document.getElementById('btn-stop').disabled = true;
-                html5QrCode = null;
-            }).catch(err => {
-                console.error('Error stopping camera: ', err);
-            });
-        }
+        return new Promise((resolve) => {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('btn-start').disabled = false;
+                    document.getElementById('btn-stop').disabled = true;
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                    resolve();
+                }).catch(err => {
+                    console.error('Error stopping camera: ', err);
+                    resolve();
+                });
+            } else {
+                resolve();
+            }
+        });
     }
 
     /**
