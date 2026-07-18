@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/tpqalmuj/public_html/
+    - /bin/cp -R tpqkita-php/* $DEPLOYPATH

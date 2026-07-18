@@ -100,6 +100,12 @@ $surat_opt = $db->query("SELECT * FROM surat ORDER BY CAST(SUBSTRING(id, 3) AS U
         <div class="rounded-2xl border p-4 flex items-start gap-3 <?php echo $alert_type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'; ?>">
             <p class="text-sm"><?php echo $alert; ?></p>
         </div>
+
+<?php
+// Get all santri for dropdown
+$santri_all = $db->query("SELECT id, name, barcode FROM santri ORDER BY name ASC")->fetchAll();
+?>
+
     <?php endif; ?>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -144,10 +150,24 @@ $surat_opt = $db->query("SELECT * FROM surat ORDER BY CAST(SUBSTRING(id, 3) AS U
 
             <!-- Manual input helper -->
             <div class="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Barcode Tidak Terbaca?</h4>
-                <div class="flex gap-2">
-                    <input type="text" id="manual-barcode" placeholder="Ketik nomor barcode (SANTRI-001)..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs focus:outline-none">
-                    <button onclick="fetchStudentByBarcode(document.getElementById('manual-barcode').value)" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl text-xs">Cari</button>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Pencarian Santri Manual</h4>
+                <div class="flex flex-col gap-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="manual-barcode" placeholder="Ketik Barcode / ID Santri lalu klik Cari..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-emerald-500">
+                        <button onclick="fetchStudentByBarcode(document.getElementById('manual-barcode').value)" class="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition duration-150">Cari</button>
+                    </div>
+                    <div class="relative">
+                        <select 
+                            id="manual-select"
+                            class="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl focus:outline-none focus:border-emerald-500 block w-full px-4 py-2.5 font-bold cursor-pointer"
+                            onchange="if(this.value) fetchStudentByBarcode(this.value);"
+                        >
+                            <option value="">-- Atau Pilih Nama Santri --</option>
+                            <?php foreach ($santri_all as $s): ?>
+                                <option value="<?php echo htmlspecialchars($s['barcode']); ?>"><?php echo htmlspecialchars($s['name']); ?> (<?php echo htmlspecialchars($s['barcode']); ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

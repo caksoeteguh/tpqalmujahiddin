@@ -171,7 +171,7 @@ function isPageActive($pageName) {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5m-3-11.25h13.5m-13.5 9h13.5M6.75 5.25h10.5a.75.75 0 0 1 .75.75v12a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V6a.75.75 0 0 1 .75-.75Z" />
                 </svg>
-                Cetak Kartu &amp; Lanyard
+                Cetak Kartu Santri
             </a>
 
             <!-- Rekapitulasi Pembelajaran -->
@@ -179,20 +179,20 @@ function isPageActive($pageName) {
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                 </svg>
-                Rekapitulasi Capaian
+                Rekapitulasi Evaluasi
             </a>
 
             <!-- Identitas TPQ (Admins/Kepala) -->
             <?php if (in_array($role, ['Walikelas', 'KepalaTPQ'])): ?>
                 <div class="pt-4 pb-2 px-4">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Lembaga</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengaturan</span>
                 </div>
                 
                 <a href="identitas.php" class="flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition duration-150 <?php echo isPageActive('identitas.php') ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/10' : 'hover:bg-slate-800 hover:text-white text-slate-400'; ?>">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 0 0-4.5 4.5v.75h18V21a4.5 4.5 0 0 0-4.5-4.5h-.75c-.702 0-1.4-.03-2.089-.09m0-5.625a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM20.25 6H18.75V4.5A1.5 1.5 0 0 0 17.25 3h-10.5A1.5 1.5 0 0 0 5.25 4.5V6H3.75A1.5 1.5 0 0 0 2.25 7.5v6.75A1.5 1.5 0 0 0 3.75 15.75h16.5a1.5 1.5 0 0 0 1.5-1.5V7.5A1.5 1.5 0 0 0 20.25 6Z" />
                     </svg>
-                    Profil Lembaga TPQ
+                    Identitas & Aplikasi
                 </a>
             <?php endif; ?>
 
