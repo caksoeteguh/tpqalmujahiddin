@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="mt-6 text-center text-slate-500 text-xs leading-relaxed max-w-sm mx-auto">
             <p>Akun Demo Default:</p>
             <p class="font-mono mt-1 text-slate-400">
-                Kepala TPQ: <strong class="text-emerald-400">kepala</strong> | Sandi: <strong class="text-emerald-400">password</strong><br>
+                Kepala TPQ / Admin: <strong class="text-emerald-400">admin</strong> | Sandi: <strong class="text-emerald-400">admin123</strong><br>
                 Ustadz: <strong class="text-emerald-400">ahmad</strong> | Sandi: <strong class="text-emerald-400">password</strong><br>
                 Wali Santri: <strong class="text-emerald-400">budi</strong> | Sandi: <strong class="text-emerald-400">password</strong>
             </p>

@@ -173,7 +173,7 @@ ON DUPLICATE KEY UPDATE name=name;
 
 INSERT INTO users (id, username, password_hash, name, role, linked_id) VALUES
 ('US01', 'walikelas', '$2y$10$R9h/cIPz9fN8vG2GepW2eO0O0u79uQpZit7X3kQsh57RbeN.X283S', 'Ibu Hajjah Khadijah, M.Pd', 'Walikelas', NULL),
-('US02', 'kepala', '$2y$10$R9h/cIPz9fN8vG2GepW2eO0O0u79uQpZit7X3kQsh57RbeN.X283S', 'KH. Maimun Zubair, Lc', 'KepalaTPQ', NULL),
+('US02', 'admin', '$2y$10$Bru.cqynn7xFQL3Ev7E2h.T/BTcaz6exr4WA0RQV9uG945sHrk6/i', 'Administrator', 'KepalaTPQ', NULL),
 ('US03', 'ahmad', '$2y$10$R9h/cIPz9fN8vG2GepW2eO0O0u79uQpZit7X3kQsh57RbeN.X283S', 'Ustadz Ahmad Fauzi, S.Pd.I', 'Ustadz', 'U01'),
 ('US04', 'budi', '$2y$10$R9h/cIPz9fN8vG2GepW2eO0O0u79uQpZit7X3kQsh57RbeN.X283S', 'Budi Santoso', 'OrangTua', 'S01')
 ON DUPLICATE KEY UPDATE username=username;
