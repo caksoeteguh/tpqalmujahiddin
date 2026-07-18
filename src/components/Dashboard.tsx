@@ -1283,8 +1283,6 @@ export default function Dashboard({
       {/* Render custom Parent/KepalaTPQ Dashboards directly */}
       {currentUser.role === 'OrangTua' ? (
         renderParentDashboard()
-      ) : currentUser.role === 'KepalaTPQ' ? (
-        renderKepalaTPQDashboard()
       ) : (
         <>
           {/* General TPQ statistics cards */}

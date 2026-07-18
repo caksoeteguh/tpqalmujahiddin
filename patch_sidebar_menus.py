@@ -1,109 +1,17 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import sys
 
-import { 
-  LayoutDashboard, 
-  Database, 
-  BookOpen, 
-  Award, 
-  CheckSquare, 
-  Users, 
-  UserCheck, 
-  GraduationCap, 
-  QrCode, 
-  FileSpreadsheet, 
-  Code, 
-  LogOut, 
-  BookOpenCheck,
-  Settings,
-  Sparkles,
-  UserPlus,
-  Key,
-  BookMarked,
-  Server
-} from 'lucide-react';
-import { Role, TpqIdentity } from '../types';
+with open('src/components/Sidebar.tsx', 'r') as f:
+    content = f.read()
 
-interface SidebarProps {
-  currentTab: string;
-  setCurrentTab: (tab: string) => void;
-  role: Role;
-  onLogout: () => void;
-  isOpen: boolean;
-  setIsOpen: (open: boolean) => void;
-  tpqIdentity: TpqIdentity;
-}
+# Replace everything from {/* Main Group */} to {/* Footer info & Logout */}
+start_marker = "{/* Main Group */}"
+end_marker = "{/* Footer info & Logout */}"
 
-export default function Sidebar({
-  currentTab,
-  setCurrentTab,
-  role,
-  onLogout,
-  isOpen,
-  setIsOpen,
-  tpqIdentity
-}: SidebarProps) {
-  
-  const handleNav = (tab: string) => {
-    setCurrentTab(tab);
-    // On mobile, close sidebar on navigation
-    if (window.innerWidth < 1024) {
-      setIsOpen(false);
-    }
-  };
+start_idx = content.find(start_marker)
+end_idx = content.find(end_marker)
 
-  // Sneat styling colors: emerald & slate gradient
-  const activeClass = "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20";
-  const inactiveClass = "text-slate-400 hover:bg-slate-800/40 hover:text-white transition-colors duration-200";
-
-  return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs lg:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-850 sidebar-gradient text-slate-300 transition-transform lg:static lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-slate-800/40">
-          <div className="flex items-center gap-3 overflow-hidden">
-            {tpqIdentity.logo && tpqIdentity.logo.startsWith('data:image') ? (
-              <img src={tpqIdentity.logo} alt="Logo" className="h-12 w-12 object-cover rounded-xl shadow-md" />
-            ) : (
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                </svg>
-              </div>
-            )}
-            <div className="overflow-hidden">
-              <span className="text-[13px] font-extrabold tracking-tight text-white block truncate max-w-[140px]">
-                {tpqIdentity.name}
-              </span>
-              <p className="text-[9px] font-semibold tracking-wider text-slate-500 uppercase">TPQ Digital App</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 lg:hidden"
-          >
-            <XIcon size={18} />
-          </button>
-        </div>
-
-        {/* Menu Navigation */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-          
-          {/* Main Group */}
+if start_idx != -1 and end_idx != -1:
+    new_menus = """{/* Main Group */}
           <div>
             <nav className="space-y-1">
               <button
@@ -236,47 +144,10 @@ export default function Sidebar({
           )}
 
         </div>
-        {/* Footer info & Logout */}
-        <div className="border-t border-slate-800/60 p-4">
-          <div className="flex items-center gap-3 rounded-xl bg-slate-800/30 p-3 mb-3 border border-slate-800/40">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white font-bold text-sm">
-              {(role === 'Walikelas' || role === 'Admin') ? 'A' : role[0]}
-            </div>
-            <div className="overflow-hidden">
-              <p className="truncate text-xs font-semibold text-white">Role: {role === 'Walikelas' || role === 'Admin' ? 'Admin' : role === 'OrangTua' ? 'Wali Santri' : role === 'KepalaTPQ' ? 'Kepala TPQ' : role}</p>
-              <p className="text-[10px] text-slate-400 truncate">Sistem Online</p>
-            </div>
-          </div>
-          <button
-            onClick={onLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-rose-400 hover:bg-rose-950/20 transition-all duration-200"
-          >
-            <LogOut size={16} />
-            <span>Keluar Aplikasi</span>
-          </button>
-        </div>
-      </aside>
-    </>
-  );
-}
-
-// Simple internal X icon helper to ensure compilation is safe and light
-function XIcon({ size = 18, className = '' }) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  );
-}
+        """
+    content = content[:start_idx] + new_menus + content[end_idx:]
+    with open('src/components/Sidebar.tsx', 'w') as f:
+        f.write(content)
+    print("Sidebar menus patched")
+else:
+    print("Markers not found!")

@@ -34,6 +34,7 @@ import {
 } from '../types';
 
 interface BarcodeScannerProps {
+  autoStartCamera?: boolean;
   santriList: Santri[];
   kelasList: Kelas[];
   ustadzList: Ustadz[];
@@ -52,6 +53,7 @@ interface BarcodeScannerProps {
 }
 
 export default function BarcodeScanner({
+  autoStartCamera = false,
   santriList,
   kelasList,
   ustadzList,
@@ -76,7 +78,7 @@ export default function BarcodeScanner({
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   // Camera States
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(autoStartCamera);
   const lastScannedRef = useRef({ code: '', time: 0 });
 
   // Sound effect indicator for successful scans
