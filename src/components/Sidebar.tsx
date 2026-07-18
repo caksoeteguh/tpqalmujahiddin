@@ -55,7 +55,7 @@ export default function Sidebar({
   };
 
   // Sneat styling colors: emerald & slate gradient
-  const activeClass = "active-nav text-emerald-400 font-semibold";
+  const activeClass = "bg-emerald-500 text-slate-950 font-bold shadow-md shadow-emerald-500/20";
   const inactiveClass = "text-slate-400 hover:bg-slate-800/40 hover:text-white transition-colors duration-200";
 
   return (
@@ -77,15 +77,12 @@ export default function Sidebar({
         <div className="flex h-16 items-center justify-between px-6 border-b border-slate-800/40">
           <div className="flex items-center gap-3 overflow-hidden">
             {tpqIdentity.logo && tpqIdentity.logo.startsWith('data:image') ? (
-              <img src={tpqIdentity.logo} alt="Logo" className="h-10 w-10 object-cover rounded-xl shadow-md" />
+              <img src={tpqIdentity.logo} alt="Logo" className="h-12 w-12 object-cover rounded-xl shadow-md" />
             ) : (
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-md ${
-                tpqIdentity.logo === 'PRESET_BLUE' ? 'bg-indigo-600' :
-                tpqIdentity.logo === 'PRESET_GOLD' ? 'bg-amber-500 text-slate-900' :
-                tpqIdentity.logo === 'PRESET_TEAL' ? 'bg-teal-500' :
-                'bg-emerald-500'
-              }`}>
-                <BookOpenCheck size={22} className="animate-pulse" />
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                </svg>
               </div>
             )}
             <div className="overflow-hidden">
