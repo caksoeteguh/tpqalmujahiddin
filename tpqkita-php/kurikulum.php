@@ -199,7 +199,7 @@ $mapel_list = $db->query("SELECT * FROM mapel_lain ORDER BY name ASC")->fetchAll
         </div>
 
     <!-- Tab 2: Surat (Tahfidz) -->
-    <?php else: ?>
+    <?php elseif ($active_tab === 'surat'): ?>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <!-- Surat table -->
             <div class="lg:col-span-2 bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
@@ -257,8 +257,6 @@ $mapel_list = $db->query("SELECT * FROM mapel_lain ORDER BY name ASC")->fetchAll
                 </form>
             </div>
         </div>
-    <?php endif; ?>
-
     <!-- Tab 3: Mapel Lain -->
     <?php elseif ($active_tab === 'mapel'): ?>
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
