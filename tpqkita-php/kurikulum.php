@@ -321,9 +321,8 @@ $mapel_list = $db->query("SELECT * FROM mapel_lain ORDER BY name ASC")->fetchAll
                 </form>
             </div>
         </div>
-
+    <?php endif; ?>
 </div>
-
 <script>
     function editJilid(j) {
         document.getElementById('jilid-form-title').innerText = "Edit Jilid: " + j.name;
